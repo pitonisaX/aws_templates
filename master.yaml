@@ -19,6 +19,12 @@ Description: >
     Last Modified: 17th February 2017
     Author Dan Carr (ddcarr@gmail.com)
 
+Parameters:
+
+    KeyPairName:
+        Description: Key Pair for access to bastion and ecs host instances
+        Type: String
+
 Resources:
 
     VPC:
@@ -57,113 +63,26 @@ Resources:
             TemplateURL: https://s3-us-west-2.amazonaws.com/cfn-templates-hacko-infra/infrastructure/ecs-cluster.yaml
             Parameters:
                 EnvironmentName: !Ref AWS::StackName
+                KeyPairName: !Ref KeyPairName
                 InstanceType: t2.micro
                 ClusterSize: 2
                 VPC: !GetAtt VPC.Outputs.VPC
                 SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
                 Subnets: !GetAtt VPC.Outputs.PrivateSubnets
 
-    # HomelessRDS:
-    #     Type: AWS::CloudFormation::Stack
-    #     Properties:
-    #         TemplateURL: https://s3-us-west-2.amazonaws.com/cfn-templates-hacko-infra/infrastructure/rds.yaml
-    #         Parameters:
-    #             EnvironmentName: !Ref AWS::StackName
-    #             VPC: !GetAtt VPC.Outputs.VPC
-    #             Subnets: !GetAtt VPC.Outputs.PrivateSubnets
-    #             TheDBIdentifier: 'foinkenstein'
-    #             TheDBName: 'foinkme'
-    #             TheDBUser: 'postgres'
-    #             TheDBPassword: 'postgres'
-    #             TheDBAllocatedStorage: '5'
-    #             TheDBInstanceClass: 'db.t2.micro'
-    #             IsMultiAZDatabase: 'false'
-
-    # BudgetService:
-    #     Type: AWS::CloudFormation::Stack
-    #     Properties:
-    #         TemplateURL: https://s3-us-west-2.amazonaws.com/cfn-templates-hacko-infra/services/budget-service/service.yaml
-    #         Parameters:
-    #             VPC: !GetAtt VPC.Outputs.VPC
-    #             Cluster: !GetAtt ECS.Outputs.Cluster
-    #             DesiredCount: 2
-    #             Listener: !GetAtt ALB.Outputs.Listener
-    #             Path: /budget
-    #
-
-    # EmerresponeService:
-    #     Type: AWS::CloudFormation::Stack
-    #     Properties:
-    #         TemplateURL: https://s3-us-west-2.amazonaws.com/cfn-templates-hacko-infra/services/emerresponse-service/service.yaml
-    #         Parameters:
-    #             VPC: !GetAtt VPC.Outputs.VPC
-    #             Cluster: !GetAtt ECS.Outputs.Cluster
-    #             DesiredCount: 2
-    #             Listener: !GetAtt ALB.Outputs.Listener
-    #             Path: /emerresponse
-
     HomelessService:
         Type: AWS::CloudFormation::Stack
         Properties:
-            #TemplateURL: https://s3-us-west-2.amazonaws.com/cfn-templates-hacko-infra/services/homeless-service/service.yaml
             TemplateURL: https://s3-us-west-2.amazonaws.com/devops-box-hacku/service.yaml
             Parameters:
-                EnvironmentName: !Ref AWS::StackName
-                VPC: !GetAtt VPC.Outputs.VPC
-                Subnets: !GetAtt VPC.Outputs.PrivateSubnets
-                TheDBIdentifier: 'pitondb8' # Your database Identifier
-                TheDBName: 'alpha8' # Leave it blank for now
-                TheDBUser: 'postgres' ## master admin user.  Will use <postgres>
-                TheDBPassword: 'postgres'  ## <PASSWORD>
-                TheDBAllocatedStorage: '5'
-                TheDBInstanceClass: 'db.t2.micro'
-                IsMultiAZDatabase: 'false' # Change this if you want a multi-az deploy
-
-    ProductService:
-        Type: AWS::CloudFormation::Stack
-        Properties:
-            TemplateURL: https://s3-us-west-2.amazonaws.com/cfn-templates-hacko-infra/services/product-service/service.yaml
-            Parameters:
                 VPC: !GetAtt VPC.Outputs.VPC
                 Cluster: !GetAtt ECS.Outputs.Cluster
                 DesiredCount: 2
                 Listener: !GetAtt ALB.Outputs.Listener
-                Path: /products
-
-    WebsiteService:
-        Type: AWS::CloudFormation::Stack
-        Properties:
-            TemplateURL: https://s3-us-west-2.amazonaws.com/cfn-templates-hacko-infra/services/website-service/service.yaml
-            Parameters:
-                VPC: !GetAtt VPC.Outputs.VPC
-                Cluster: !GetAtt ECS.Outputs.Cluster
-                DesiredCount: 2
-                Listener: !GetAtt ALB.Outputs.Listener
-                ConfigBucket: ASSIGN9-CONFIG
-                DeployTarget: INTEGRATION
-                Path: /homeless/*
-
-    # HousingService:
-    #     Type: AWS::CloudFormation::Stack
-    #     Properties:
-    #         TemplateURL: https://s3-us-west-2.amazonaws.com/cfn-templates-hacko-infra/services/housing-service/service.yaml
-    #         Parameters:
-    #             VPC: !GetAtt VPC.Outputs.VPC
-    #             Cluster: !GetAtt ECS.Outputs.Cluster
-    #             DesiredCount: 2
-    #             Listener: !GetAtt ALB.Outputs.Listener
-    #             Path: /housing
-    #
-    # TransportationService:
-    #     Type: AWS::CloudFormation::Stack
-    #     Properties:
-    #         TemplateURL: https://s3-us-west-2.amazonaws.com/cfn-templates-hacko-infra/services/transportation-service/service.yaml
-    #         Parameters:
-    #             VPC: !GetAtt VPC.Outputs.VPC
-    #             Cluster: !GetAtt ECS.Outputs.Cluster
-    #             DesiredCount: 2
-    #             Listener: !GetAtt ALB.Outputs.Listener
-    #             Path: /transportation
+                ConfigBucket: devops-box-hacku
+                DeployTarget: integration
+                ProjSettingsDir: homelessAPI
+                Path: /homeless*
 
     EndPoints:
         Type: AWS::CloudFormation::Stack
@@ -176,17 +95,39 @@ Resources:
                 Listener: !GetAtt ALB.Outputs.Listener
                 ALB: !GetAtt ALB.Outputs.LoadBalancerUrl
                 Path: /
+
+    # BastionHost:
+    #     Type: AWS::CloudFormation::Stack
+    #     Properties:
+    #         TemplateURL: https://s3-us-west-2.amazonaws.com/cfn-templates-hacko-infra/infrastructure/ec2-instance.yaml
+    #         Parameters:
+    #             EnvironmentName: !Ref AWS::StackName
+    #             VPC: !GetAtt VPC.Outputs.VPC
+    #             AvailabilityZone: us-west-2a
+    #             SecurityGroupId: !GetAtt SecurityGroups.Outputs.BastionHostSecurityGroup
+    #             ServerName: bastion
+    #             AmiName: bastion
+    #             KeyPairName: !Ref KeyPairName
+    #             InstanceType: t2.nano
+    #             Subnet: !GetAtt VPC.Outputs.PublicSubnet1
+
+    # HomelessDB:
+    #     Type: AWS::CloudFormation::Stack
+    #     Properties:
+    #         TemplateURL: https://s3-us-west-2.amazonaws.com/cfn-templates-hacko-infra/infrastructure/ec2-instance.yaml
+    #         Parameters:
+    #             EnvironmentName: !Ref AWS::StackName
+    #             VPC: !GetAtt VPC.Outputs.VPC
+    #             AvailabilityZone: us-west-2a
+    #             SecurityGroupId: !GetAtt SecurityGroups.Outputs.DBSecurityGroup
+    #             ServerName: homeless
+    #             AmiName: homeless
+    #             KeyPairName: !Ref KeyPairName
+    #             InstanceType: t2.nano
+    #             Subnet: !GetAtt VPC.Outputs.PrivateSubnet1
+    
 Outputs:
 
     HomelessServiceUrl:
-        Description: The URL endpoint for the product service
+        Description: The URL endpoint for the homeless service
         Value: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "homeless" ]]
-
-
-    # ProductServiceUrl:
-    #     Description: The URL endpoint for the product service
-    #     Value: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "products" ]]
-    #
-    # WebsiteServiceUrl:
-    #     Description: The URL endpoint for the website service
-    #     Value: !Join ["", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "/" ]]
